@@ -18,7 +18,7 @@ ev3 = EV3Brick()
 arm_motor = Motor(Port.C)
 left = Motor(Port.A)
 right = Motor(Port.D)
-robot = DriveBase(left,right,55.5,106)
+robot = DriveBase(left,right,55.5,104)
 
 left_color = ColorSensor(Port.S3)
 right_color = ColorSensor(Port.S4)
@@ -27,7 +27,7 @@ ultra_sensor = UltrasonicSensor(Port.S2)
 
 
 
-DRIVE_SPEED = 160
+DRIVE_SPEED = 150
 PROPORTIONAL_GAIN = 1.2
 
 # while True:
@@ -38,7 +38,7 @@ PROPORTIONAL_GAIN = 1.2
 
 
 threshold = 50
-kp =1.2
+kp =1.7
 
 Nor, Eea, Sou, Wes = 1, 2, 3, 4
 
@@ -128,7 +128,7 @@ def grab_object():
 
 def turn_min(now_dir, target_dir):
     diff = (target_dir - now_dir) % 4
-    angle = [0, 105, -197, -105][diff]
+    angle = [0, 95, -185, -95][diff]
     robot.turn(angle)
     return target_dir
 
@@ -315,17 +315,18 @@ def to_12(start, now_dir):
     for next_xy in path[2:]:      # 두 번째부터 목적지까지
         print("이동 →", next_xy)
         (fx, fy), now_dir, status = move_manhattan((fx, fy), next_xy, now_dir)
-    robot.straight(40)
+    robot.straight(50)
     turn_min(now_dir, Eea)
 
-search_l = [(6, 4), (4, 2), (4, 0), (6, 2), (8, 4), (8, 2), (6, 0), (8, 0)][::-1]
+search_l = [(6, 4), (4, 2), (4, 0), (6, 2), (8, 4), (8, 2), (6, 0), (8, 0), (0, 2)][::-1]
+block_count = 0
 while True:
 
     if any(ev3.buttons.pressed()):
         release_object()
         robot.straight(100)
         while right_color.reflection() > 30:
-            left_line_following(100, 1.2)
+            left_line_following(100, 1.5)
         robot.stop()
 
         start = (2, 4)
@@ -358,6 +359,7 @@ while True:
                                 end = search_l.pop()
                             print('현재위치:', fx, fy)
                             to_red((fx*2, fy*2), now_dir)
+                            block_count += 1
                             start = (2, 4)
                             now_dir = Eea
                             break 
@@ -366,6 +368,7 @@ while True:
                             if (fx*2, fy*2) == end:
                                 end = search_l.pop()
                             to_blue((fx*2, fy*2), now_dir)
+                            block_count += 1
                             start = (2, 4)
                             now_dir = Eea
                             break
