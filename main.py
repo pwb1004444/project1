@@ -27,7 +27,7 @@ ultra_sensor = UltrasonicSensor(Port.S2)
 
 
 
-DRIVE_SPEED = 150
+DRIVE_SPEED = 210
 PROPORTIONAL_GAIN = 1.2
 
 # while True:
@@ -38,7 +38,8 @@ PROPORTIONAL_GAIN = 1.2
 
 
 threshold = 50
-kp =1.7
+kp =1.2
+
 
 Nor, Eea, Sou, Wes = 1, 2, 3, 4
 
@@ -126,13 +127,14 @@ def release_object():
 def grab_object():
     arm_motor.run_until_stalled(200, then=Stop.COAST, duty_limit=50)
 
-def turn_min(now_dir, target_dir):
+def turn_min(now_dir, target_dir, turn_185rate):
     diff = (target_dir - now_dir) % 4
-    angle = [0, 95, -185, -95][diff]
+    angle = [0, 95, -turn_185rate, -95][diff]
     robot.turn(angle)
     return target_dir
 
 def move_manhattan(start_xy, goal_xy, now_dir):
+    turn_180 = 190
     x, y = start_xy
     gx, gy = goal_xy
     dx = gx-x
@@ -152,10 +154,10 @@ def move_manhattan(start_xy, goal_xy, now_dir):
                 direction='left'
 
         target_dir = Eea if dx > 0 else Wes
-        robot.straight(40)
+        robot.straight(60)
         print('타겟:', target_dir)
-        now_dir = turn_min(now_dir, target_dir)
-        wait(100)
+        now_dir = turn_min(now_dir, target_dir, turn_180)
+        wait(50)
         steps = abs(dx)
         for _ in range(steps):
             x += 1 if target_dir == Eea else -1
@@ -165,6 +167,7 @@ def move_manhattan(start_xy, goal_xy, now_dir):
 
     if dy != 0:
         if x == 2:
+            turn_180 = 220
             if dy < 0:
                 direction = 'right'
             else:
@@ -176,9 +179,9 @@ def move_manhattan(start_xy, goal_xy, now_dir):
                 direction = 'left'
 
         target_dir = Nor if dy > 0 else Sou
-        robot.straight(40)
-        now_dir = turn_min(now_dir, target_dir)
-        wait(100)
+        robot.straight(60)
+        now_dir = turn_min(now_dir, target_dir, turn_180)
+        wait(50)
         steps = abs(dy)
         for _ in range(steps):
             y += 1 if target_dir == Nor else -1
@@ -286,8 +289,7 @@ def to_blue(start, now_dir):
             print("이동 →", next_xy)
             (fx, fy), now_dir, status = move_manhattan((fx, fy), next_xy, now_dir)
         release_object()
-        robot.straight(150)
-        robot.straight(-150)
+        robot.straight(-50)
         to_12((fx*2, fy*2), now_dir)
 
 def to_red(start, now_dir):
@@ -301,8 +303,7 @@ def to_red(start, now_dir):
             print("이동 →", next_xy)
             (fx, fy), now_dir, status = move_manhattan((fx, fy), next_xy, now_dir)
         release_object()
-        robot.straight(150)
-        robot.straight(-150)
+        robot.straight(-50)
         to_12((fx*2, fy*2), now_dir)
 
 def to_12(start, now_dir):
@@ -315,8 +316,8 @@ def to_12(start, now_dir):
     for next_xy in path[2:]:      # 두 번째부터 목적지까지
         print("이동 →", next_xy)
         (fx, fy), now_dir, status = move_manhattan((fx, fy), next_xy, now_dir)
-    robot.straight(50)
-    turn_min(now_dir, Eea)
+    robot.straight(60)
+    turn_min(now_dir, Eea, 190)
 
 search_l = [(6, 4), (4, 2), (4, 0), (6, 2), (8, 4), (8, 2), (6, 0), (8, 0), (0, 2)][::-1]
 block_count = 0
@@ -326,13 +327,16 @@ while True:
         release_object()
         robot.straight(100)
         while right_color.reflection() > 30:
-            left_line_following(100, 1.5)
+            left_line_following(200, 1.5)
         robot.stop()
 
         start = (2, 4)
         now_dir = Eea
         end = search_l.pop()
         while len(search_l) != 0:
+            if block_count == 4:
+                        # 4개를 모두 모았으면 내부 루프 종료 -> 아래의 (0,4) 이동 로직으로
+                    break
             flag = 0
             print("시작:", start)
             path, dist = bfs(start, end)
@@ -372,7 +376,11 @@ while True:
                             start = (2, 4)
                             now_dir = Eea
                             break
-
+                    if block_count == 4:
+                        # 4개를 모두 모았으면 내부 루프 종료 -> 아래의 (0,4) 이동 로직으로
+                        break
+            
+            
             if flag == 0:
                 start = (fx*2, fy*2)
                 end = search_l.pop()
